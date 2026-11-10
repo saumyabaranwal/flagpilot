@@ -78,15 +78,15 @@ app.get('/api/flags', async (req, res) => {
   }
 
   try {
+        // reads from the view built in db/03_indexes_views.sql,
+    // so the three-table join lives in the database, not in here
     const [rows] = await pool.query(
-      `SELECT f.flag_id, f.flag_key, f.description,
-              e.environment_id, e.environment_name,
-              fe.flag_environment_id, fe.is_enabled, fe.updated_at
-       FROM feature_flags f
-       JOIN flag_environments fe ON fe.flag_id = f.flag_id
-       JOIN environments e       ON e.environment_id = fe.environment_id
-       WHERE f.project_id = ? AND e.environment_name = ?
-       ORDER BY f.flag_key`,
+      `SELECT flag_id, flag_key, description,
+              environment_id, environment_name,
+              is_enabled, updated_at
+       FROM v_flag_status
+       WHERE project_id = ? AND environment_name = ?
+       ORDER BY flag_key`,
       [project_id, env]
     );
     res.json(rows);
