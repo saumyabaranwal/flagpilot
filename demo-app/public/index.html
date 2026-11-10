@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Demo app</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #1b1f24;
+    --card: #f6f8fa;
+    --border: #d8dee4;
+    --accent: #0969da;
+  }
+
+  /* this whole block is the "feature". the flag decides whether it applies */
+  body.dark {
+    --bg: #0d1117;
+    --fg: #e6edf3;
+    --card: #161b22;
+    --border: #30363d;
+    --accent: #58a6ff;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    transition: background .25s, color .25s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 32px 36px;
+    width: 460px;
+  }
+
+  h1 { margin: 0 0 6px; font-size: 22px; }
+  p.sub { margin: 0 0 24px; opacity: .7; font-size: 14px; }
+
+  .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 11px 0;
+    border-top: 1px solid var(--border);
+    font-size: 14px;
+  }
+
+  .row span:first-child { opacity: .7; }
+
+  code {
+    font-family: ui-monospace, Consolas, monospace;
+    font-size: 13px;
+    background: var(--bg);
+    padding: 2px 6px;
+    border-radius: 5px;
+    border: 1px solid var(--border);
+  }
+
+  .pill {
+    font-size: 12px;
+    padding: 2px 9px;
+    border-radius: 10px;
+    font-weight: 500;
+  }
+  .on  { background: #2ea04333; color: #3fb950; }
+  .off { background: #f8514933; color: #f85149; }
+
+  .who { margin-top: 18px; font-size: 13px; opacity: .8; }
+  .who code { cursor: pointer; }
+  .who code.active { border-color: var(--accent); color: var(--accent); }
+</style>
+</head>
+<body>
+
+  <div class="card">
+    <h1>My demo app</h1>
+    <p class="sub">This app checks a feature flag before showing the dark theme.</p>
+
+    <div class="row">
+      <span>flag</span><span><code>dark_mode</code></span>
+    </div>
+    <div class="row">
+      <span>enabled?</span><span id="enabled">…</span>
+    </div>
+    <div class="row">
+      <span>decided by</span><span><code id="reason">…</code></span>
+    </div>
+    <div class="row">
+      <span>theme applied</span><span id="theme">…</span>
+    </div>
+
+    <p class="who">
+      asking as <code data-user="u_1001">u_1001</code> or <code data-user="u_1002">u_1002</code>
+      <br>(click one, then flip the flag in VS Code and reload)
+    </p>
+  </div>
+
+<script>
+  // remember which user we're pretending to be, so the demo survives a reload
+  const user = localStorage.getItem('demo-user') || 'u_1001';
+
+  function markActiveUser() {
+    document.querySelectorAll('.who code').forEach((el) => {
+      el.classList.toggle('active', el.dataset.user === user);
+      el.onclick = () => {
+        localStorage.setItem('demo-user', el.dataset.user);
+        location.reload();
+      };
+    });
+  }
+
+  async function run() {
+    markActiveUser();
+
+    const res = await fetch(`/flag?key=dark_mode&user=${user}`);
+    const flag = await res.json();
+
+    document.getElementById('enabled').innerHTML =
+      `<span class="pill ${flag.enabled ? 'on' : 'off'}">${flag.enabled}</span>`;
+    document.getElementById('reason').textContent = flag.reason;
+    document.getElementById('theme').textContent = flag.enabled ? 'dark (new)' : 'light (old)';
+
+    // the if-statement. written once, never changed by the toggle.
+    if (flag.enabled) {
+      document.body.classList.add('dark');
+    } else {
+      document.body.classList.remove('dark');
+    }
+  }
+
+  run();
+</script>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a57d2eeacca2a5d3',t:'MTc5NDIzMTE0NA=='};var l=window.parent.location,o;try{o=new URL(l.origin).origin}catch(e){try{o=new URL(new URL(l.href).origin).origin}catch(e){o=''}}var u='/cdn-cgi/challenge-platform/scripts/jsd/main.js?ray=a57d2eeacca2a5d3',a=document.createElement('script');a.src=o?new URL(u,o).href:u;document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>

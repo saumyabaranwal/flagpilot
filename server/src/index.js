@@ -46,6 +46,25 @@ app.get('/api/projects', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+// ---------------------------------------------------------------
+// GET /api/environments?project_id=1  - the middle level of the tree
+// ---------------------------------------------------------------
+app.get('/api/environments', async (req, res) => {
+  const { project_id } = req.query;
+  if (!project_id) {
+    return res.status(400).json({ error: 'project_id is required' });
+  }
+
+  try {
+    const [rows] = await pool.query(
+      'SELECT environment_id, project_id, environment_name FROM environments WHERE project_id = ? ORDER BY environment_id',
+      [project_id]
+    );
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // ---------------------------------------------------------------
 // GET /api/flags?project_id=1&env=development

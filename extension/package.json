@@ -1,0 +1,93 @@
+{
+  "name": "flagpilot",
+  "displayName": "FlagPilot",
+  "description": "Manage feature flags for your project without leaving VS Code",
+  "version": "0.1.0",
+  "publisher": "saumya",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "main": "./src/extension.js",
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "flagpilot",
+          "title": "FlagPilot",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "flagpilot": [
+        {
+          "id": "flagpilot.flags",
+          "name": "Flags"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "flagpilot.refresh",
+        "title": "FlagPilot: Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "flagpilot.createFlag",
+        "title": "FlagPilot: Create Flag",
+        "icon": "$(add)"
+      },
+      {
+        "command": "flagpilot.toggleFlag",
+        "title": "FlagPilot: Toggle Flag"
+      },
+      {
+        "command": "flagpilot.showHistory",
+        "title": "FlagPilot: Show History"
+      },
+      {
+        "command": "flagpilot.copySnippet",
+        "title": "FlagPilot: Copy Code Snippet"
+      },
+      {
+        "command": "flagpilot.setToken",
+        "title": "FlagPilot: Set API Token"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "flagpilot.refresh",
+          "when": "view == flagpilot.flags",
+          "group": "navigation@1"
+        },
+        {
+          "command": "flagpilot.createFlag",
+          "when": "view == flagpilot.flags",
+          "group": "navigation@2"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "flagpilot.toggleFlag",
+          "when": "view == flagpilot.flags && viewItem == flag",
+          "group": "0_toggle"
+        },
+        {
+          "command": "flagpilot.showHistory",
+          "when": "view == flagpilot.flags && viewItem == flag",
+          "group": "1_history"
+        },
+        {
+          "command": "flagpilot.copySnippet",
+          "when": "view == flagpilot.flags && viewItem == flag",
+          "group": "2_snippet"
+        }
+      ]
+    }
+  }
+}
