@@ -93,28 +93,67 @@ function activate(context) {
       }
     }),
 
+    // two templates, because where the code runs changes the answer.
+    // a node server can call the API directly. a browser can't read a
+    // response from another origin (CORS), so it has to ask its own
+    // server, and let that server do the call. same shape as demo-app.
     vscode.commands.registerCommand('flagpilot.copySnippet', async (node) => {
       if (!node || node.kind !== 'flag') return;
       const f = node.flag;
       const env = node.env.environment_name;
 
-      const snippet = [
-        `// FlagPilot - check "${f.flag_key}" before showing the feature`,
-        `const flag = await fetch(`,
-        `  'http://localhost:3000/api/check?key=${f.flag_key}&env=${env}&user=' + userId`,
-        `).then(r => r.json());`,
-        ``,
-        `if (flag.enabled) {`,
-        `  // feature code here`,
-        `} else {`,
-        `  // fallback`,
-        `}`,
-      ].join('\n');
+      const choice = await vscode.window.showQuickPick(
+        [
+          { label: 'Node / server-side', description: 'calls the API directly', id: 'node' },
+          { label: 'Browser', description: 'asks your own server, which calls the API', id: 'browser' },
+        ],
+        { placeHolder: 'Where will this code run?' }
+      );
+      if (!choice) return;
+
+      const snippet =
+        choice.id === 'node' ? nodeSnippet(f.flag_key, env) : browserSnippet(f.flag_key);
 
       await vscode.env.clipboard.writeText(snippet);
-      vscode.window.showInformationMessage(`FlagPilot: snippet for ${f.flag_key} copied`);
+      vscode.window.showInformationMessage(`FlagPilot: ${choice.label} snippet for ${f.flag_key} copied`);
     })
   );
+}
+
+// server-side: node 18+ can call the API directly, no CORS involved
+function nodeSnippet(key, env) {
+  return `// FlagPilot — is "${key}" on for this user?
+// run this on your server (Node 18+), not in a browser
+const res = await fetch(
+  'http://localhost:3000/api/check?key=${key}&env=${env}&user=' + userId
+);
+const flag = await res.json();   // { enabled: true, reason: 'environment_default' }
+
+if (flag.enabled) {
+  // show the new feature
+} else {
+  // fall back to the old behaviour
+}
+`;
+}
+
+// browser: the page can't read a response from the API's origin, so it
+// asks its own backend and the backend calls FlagPilot. this is what
+// demo-app/server.js does - look at its /state route.
+function browserSnippet(key) {
+  return `// FlagPilot — is "${key}" on for this user?
+// a browser is blocked from reading another origin's response (CORS),
+// so this asks your own server, and your server calls FlagPilot.
+// see demo-app/server.js for the same pattern.
+const flag = await fetch('/api/my-app/flags?key=${key}&user=' + userId)
+  .then((r) => r.json());
+
+if (flag.enabled) {
+  // show the new feature
+} else {
+  // fall back to the old behaviour
+}
+`;
 }
 
 function showHistoryPanel(flag, rows) {

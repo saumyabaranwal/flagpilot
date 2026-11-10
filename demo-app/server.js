@@ -15,13 +15,47 @@ const DEFAULT_ENV = process.env.FLAGPILOT_ENV || 'development';
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// the environments we offer in the page's switcher
-app.get('/environments', (req, res) => {
-  res.json(['development', 'production']);
+// ---------------------------------------------------------------------
+// this route is the "Node / server-side" snippet that the extension
+// copies, running for real. one flag, one if. nothing else.
+//
+//   GET /feature?key=dark_mode&user=u_1001
+//
+// it answers the question "should I show this feature?" and the answer
+// is either the feature or the fallback - the same shape as a real app
+// checking one flag at one point in its code.
+// ---------------------------------------------------------------------
+app.get('/feature', async (req, res) => {
+  const key = req.query.key;
+  const user = req.query.user || 'u_1001';
+  const env = req.query.env || DEFAULT_ENV;
+
+  if (!key) {
+    return res.status(400).json({ error: 'key is required, e.g. /feature?key=dark_mode' });
+  }
+
+  // --- this block is the snippet, verbatim ---
+  const flagRes = await fetch(
+    `${FLAGPILOT}/api/check?key=${encodeURIComponent(key)}` +
+      `&env=${encodeURIComponent(env)}&user=${encodeURIComponent(user)}`
+  );
+  const flag = await flagRes.json();   // { enabled: true, reason: '...' }
+
+  if (flag.enabled) {
+    // show the new feature
+    res.json({ key, show: 'the new feature', enabled: true, reason: flag.reason });
+  } else {
+    // fall back to the old behaviour
+    res.json({ key, show: 'the old behaviour', enabled: false, reason: flag.reason });
+  }
+  // --- end of the snippet ---
 });
 
-// one call that returns everything the page needs:
-// every flag in this environment, its state, and why.
+// ---------------------------------------------------------------------
+// this route is a *different* job: it fetches EVERY flag so the demo
+// page can draw a table of all of them. that's why it has no if.
+// the page in public/index.html does the deciding for dark_mode.
+// ---------------------------------------------------------------------
 app.get('/state', async (req, res) => {
   const env = req.query.env || DEFAULT_ENV;
   const user = req.query.user || 'u_1001';

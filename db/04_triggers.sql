@@ -34,8 +34,8 @@ FOR EACH ROW
          e.environment_name,
          COALESCE(@changed_by, 'system'),   -- set by the server; 'system' if nobody did
          IF(NEW.is_enabled = 1, 'enabled', 'disabled'),
-         CAST(OLD.is_enabled AS CHAR),      -- 1 / 0 as text, since the column is VARCHAR
-         CAST(NEW.is_enabled AS CHAR),
+         IF(OLD.is_enabled = 1, 'true', 'false'),
+         IF(NEW.is_enabled = 1, 'true', 'false'),
          NOW()
   FROM feature_flags f
   JOIN environments e ON e.environment_id = NEW.environment_id

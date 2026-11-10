@@ -9,6 +9,11 @@ You manage those switches from a sidebar inside VS Code; your app asks one quest
 Built as a DBMS course project, so the database does real work: primary and foreign keys, unique
 constraints, a view, an index, a trigger for auditing, and transactions.
 
+![FlagPilot: toggle a flag in the VS Code sidebar and the running app changes behaviour](docs/screenshots/hero.png)
+
+*Toggling a flag in the sidebar changes what the running app does — no redeploy, no code change.
+Left: the extension. Right: an app calling `GET /api/check`.*
+
 ---
 
 ## Contents
@@ -39,7 +44,7 @@ constraints, a view, an index, a trigger for auditing, and transactions.
 | Target individual test users with an exception | `POST /api/targeting` |
 | Check whether a flag is on for a user | `GET /api/check` |
 | See who changed what, and when | Right-click a flag → Show History |
-| Copy a ready-to-paste `if` block for a flag | Right-click a flag → Copy Code Snippet |
+| Copy a ready-to-paste `if` block for a flag | Right-click a flag → Copy Code Snippet (asks where the code will run) |
 
 **What a flag is *not*:** it doesn't generate or edit code. A developer writes the `if` once and
 commits it. Both branches ship in every build. The flag decides which branch runs at runtime.
@@ -250,6 +255,11 @@ off in development. No config change, no restart, no redeploy.
 The page also lists **every** flag with its state and the `reason` the API returned, so you can point at
 the reason column while showing the theme change.
 
+![The same page in production: dark_mode off, and new_checkout decided by a targeting rule](docs/screenshots/demo-production.png)
+
+*Same flag, same code. `dark_mode` is off in production, so the page stays light — and `new_checkout`
+reports `decided by: targeting_rule`, because that user has an explicit exception in the seed data.*
+
 ### In the extension
 
 | Action | How |
@@ -259,8 +269,63 @@ the reason column while showing the theme change.
 | Toggle a flag | Click the flag row |
 | Create a flag | The **+** button, or Ctrl+Shift+P → FlagPilot: Create Flag |
 | Show history | Right-click a flag → Show History |
-| Copy a code snippet | Right-click a flag → Copy Code Snippet |
+| Copy a code snippet | Right-click a flag → Copy Code Snippet, then pick Node or Browser |
 | Change the API token | Ctrl+Shift+P → FlagPilot: Set API Token |
+
+Right-clicking a flag brings up its actions:
+
+![Right-click menu on a flag: toggle, show history, copy a code snippet](docs/screenshots/context-menu.png)
+
+And **Show History** opens a timeline of every change:
+
+![The history panel: two changes from VS Code at the top, seed rows below](docs/screenshots/history-panel.png)
+
+*The top two rows were written by a **database trigger** when the flag was clicked — the route never
+inserts history. The old seed rows below them keep their names as snapshots even though they're no
+longer current.*
+
+### The code snippet generator
+
+**Copy Code Snippet** asks where the code will run, because that changes the answer:
+
+**Node / server-side** — calls the API directly:
+
+```js
+const res = await fetch(
+  'http://localhost:3000/api/check?key=dark_mode&env=development&user=' + userId
+);
+const flag = await res.json();   // { enabled: true, reason: 'environment_default' }
+
+if (flag.enabled) { /* new feature */ } else { /* old behaviour */ }
+```
+
+**Browser** — asks your own server, which calls FlagPilot:
+
+```js
+const flag = await fetch('/api/my-app/flags?key=dark_mode&user=' + userId)
+  .then((r) => r.json());
+```
+
+A browser is blocked from reading another origin's response (**CORS**), so it can't call the API
+directly — it has to go through its own backend. That's exactly what `demo-app/server.js` does in its
+`/state` route, and the snippet tells you so.
+
+**You can see the Node snippet running for real.** `demo-app/server.js` has a `/feature` route that is
+that snippet, verbatim — one flag, one `if`, nothing else:
+
+```bash
+curl "http://localhost:4000/feature?key=dark_mode&user=u_1001"
+# {"key":"dark_mode","show":"the new feature","enabled":true,"reason":"environment_default"}
+
+curl "http://localhost:4000/feature?key=dark_mode&user=u_1002"
+# {"key":"dark_mode","show":"the old behaviour","enabled":false,"reason":"targeting_rule"}
+```
+
+Two users, same flag, opposite branches — in eight lines.
+
+> **Why `/state` looks different.** `/state` fetches *every* flag so the page can draw a table, so it has
+> no `if` in it. It reports values; the page in `public/index.html` decides what to do with them. That's
+> two files doing two jobs, and `/feature` shows what they look like when combined.
 
 ---
 
@@ -333,7 +398,20 @@ production. The state belongs to the pair — which is why `flag_environments` e
 - A **view** `v_flag_status` — the flag/environment join, saved under a name and used by
   `GET /api/flags`.
 - A **trigger** `trg_fe_audit_update` — writes the history row whenever a flag is toggled.
-- An **index** `idx_hist_changed_at` — for the history panel sorted by date.
+- An **index** `idx_hist_changed_at` — for the history panel sorted by date (see the caveat in §9).
+
+Both unique constraints double as the query plan's indexes, because MySQL indexes a `UNIQUE`
+automatically:
+
+![EXPLAIN of the flag-check query: uq_flag_key and uq_flag_env are both used](docs/screenshots/explain-check-query.png)
+
+*The flag lookup uses `uq_flag_key`, and the switch lookup uses `uq_flag_env` — the constraints are doing
+the indexing work as a side effect.*
+
+![SHOW TABLES: 7 tables plus the v_flag_status view](docs/screenshots/show-tables.png)
+
+> `SHOW TABLES` reports **8 rows** — that's 7 tables **and** the `v_flag_status` view. A view is a saved
+> query, not a table; it stores no data of its own.
 
 `ARCHITECTURE.md` has the ER diagram and a full relationship map.
 
@@ -345,6 +423,11 @@ production. The state belongs to the pair — which is why `flag_environments` e
 
 The database is disposable in development. `00_reset.sql` drops the view and all 7 tables, so a
 rebuild always starts from nothing.
+
+> **Note on triggers:** dropping a table silently drops any trigger attached to it. That's why
+> `rebuild.sh` runs `04_triggers.sql` **last** — and why it prints a table/view/trigger count at the end
+> and exits with an error if any of them is missing. A rebuild that leaves you without the audit trigger
+> would otherwise fail silently, and you'd only notice when history stopped being written.
 
 ---
 
@@ -359,6 +442,10 @@ Two scripts, both expecting the server to be running.
 
 Covers: flag on, flag off, exception turning a flag ON, exception turning a flag OFF, unknown user,
 second environment, unknown flag, unknown environment. Prints PASS/FAIL per row.
+
+![All 10 evaluation cases passing](docs/screenshots/tests-passing.png)
+
+*Cases 2 and 4 are the important pair — the same override logic working in both directions.*
 
 ```bash
 # create / toggle / target / history round trip, plus auth failures
@@ -409,10 +496,37 @@ SELECT flag_key, action, changed_by FROM flag_history ORDER BY history_id DESC L
 INSERT INTO environments (project_id, environment_name) VALUES (1, 'production');
 -- ERROR 1062: Duplicate entry '1-production' for key 'environments.uq_env_name'
 
--- is the index being used?
+-- is the index being used? (see the caveat below before running this)
 EXPLAIN SELECT * FROM flag_history ORDER BY changed_at DESC LIMIT 20;
 -- look for key: idx_hist_changed_at
 ```
+
+> **Important caveat about the index demo.** On a freshly seeded database `flag_history` has **4 rows**.
+> With 4 rows MySQL ignores the index on purpose — it reports `type: ALL`, `key: NULL` and
+> `Using filesort`, because scanning a four-row table is genuinely cheaper than using an index. That is
+> the optimizer being correct, not the index being broken.
+>
+> To see the index actually used, give it something worth indexing, then rebuild afterwards:
+>
+> ```sql
+> SET SESSION cte_max_recursion_depth = 10000;
+> INSERT INTO flag_history
+>   (flag_id, flag_key, environment_id, environment_name,
+>    changed_by, action, old_value, new_value, changed_at)
+> WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 5000)
+> SELECT 1, 'dark_mode', 1, 'development', 'bulk', 'enabled', 'false', 'true',
+>        DATE_SUB(NOW(), INTERVAL i MINUTE)
+> FROM n;
+>
+> ANALYZE TABLE flag_history;
+> EXPLAIN SELECT * FROM flag_history ORDER BY changed_at DESC LIMIT 20;
+> -- now key: idx_hist_changed_at
+>
+> ./db/rebuild.sh   -- put the database back afterwards
+> ```
+>
+> The honest sentence for a report: *"with 4 rows the optimizer prefers a table scan; at 5000 rows it
+> switches to the index. The index was built for history that grows, not for the seed."*
 
 `db/99_verify.sql` collects six of these checks in one file.
 
@@ -465,6 +579,8 @@ would store hashed per-developer tokens in a table and scope projects by owner.
 | `{"error":"project_id and env are required"}` | a query parameter didn't arrive | re-check the URL |
 | `Cannot read properties of undefined` in the server | code touched `rows[0]` when the query returned nothing | check `rows.length === 0` first |
 | History rows show `changed_by: "system"` | the `SET @changed_by` and the `UPDATE` used different pooled connections | both must run on the same borrowed `conn` |
+| `SHOW TRIGGERS` is empty after a rebuild | dropping `flag_environments` drops its trigger too, and `04_triggers.sql` didn't run | `mysql -u root -p < db/04_triggers.sql`, or fix `rebuild.sh` |
+| History panel shows only `seed` rows | no trigger installed, or the panel is an old snapshot | reinstall the trigger, toggle twice, reopen the panel |
 | `(node) DeprecationWarning: url.parse()` | VS Code's own internals, not this project | ignore it |
 | Extension: `fetch is not defined` | VS Code older than 1.85 | update VS Code |
 | Demo page won't load | the demo server isn't running | `cd demo-app && npm start`, look for `demo app on http://localhost:4000` |

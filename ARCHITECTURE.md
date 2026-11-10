@@ -89,7 +89,7 @@ extension existed, and you can change the tree without touching the database.
 | `03_indexes_views.sql` | create `v_flag_status` and `idx_hist_changed_at` | 4 |
 | `04_triggers.sql` | install the audit trigger | 5 |
 | `99_verify.sql` | six read-only sanity checks | any time |
-| `rebuild.sh` | runs 1–5 in one session | — |
+| `rebuild.sh` | runs 1–5 in one session, then verifies 7 tables / 1 view / 1 trigger | — |
 
 **Why that order.** A table can only reference a table that already exists. And the trigger must be
 installed **after** seeding, or every seeded switch would write a fake history row.
@@ -128,7 +128,7 @@ JavaScript. That's a common hour-long confusion.
 
 | File | Job |
 |---|---|
-| `server.js` | serves the page, and proxies `/flag` to the API |
+| `server.js` | serves the page, and proxies `/state` to the API |
 | `public/index.html` | the `if (flag.enabled)` block, written once |
 
 The browser never calls port 3000 directly. It asks its own server, which asks FlagPilot. That avoids
@@ -291,7 +291,7 @@ Useful for a report table or a viva checklist.
 | Joins | `v_flag_status` (4 tables), `eval.js` (5 tables with LEFT JOINs) |
 | Views | `v_flag_status` |
 | Triggers | `trg_fe_audit_update` |
-| Indexes | `idx_hist_changed_at`, plus the implicit ones from every UNIQUE |
+| Indexes | `idx_hist_changed_at` (used as the table grows — see README §9), plus the implicit ones from every UNIQUE |
 | `EXPLAIN` | README §9, confirms the index is used |
 | Transactions | `POST /api/flags`, `PATCH /api/flags/:id/state` |
 | Isolation | MySQL default REPEATABLE READ (mention only) |
