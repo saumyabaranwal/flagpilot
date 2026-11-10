@@ -25,6 +25,7 @@ constraints, a view, an index, a trigger for auditing, and transactions.
 10. [Design decisions](#10-design-decisions)
 11. [Troubleshooting](#11-troubleshooting)
 12. [Known limitations](#12-known-limitations)
+13. [Project layout](#project-layout)
 
 ---
 
@@ -211,6 +212,12 @@ npm start
 
 Open **http://localhost:4000**.
 
+You should see `demo app on http://localhost:4000` in the terminal — that line means it's running. If
+it prints `Completed running`, the file is empty or the wrong one.
+
+A `.env` is optional here: the defaults point at `http://localhost:3000` and the `development`
+environment. Copy `.env.example` to `.env` only if you want to change those.
+
 ---
 
 ## 6. Using it
@@ -226,18 +233,29 @@ Same code, same running page, different behaviour — no redeploy.
 
 ### Better demo (per-user exceptions)
 
-On the demo page, click **`u_1002`** at the bottom. Refresh.
+On the demo page, click the **`u_1002`** button. The page reloads.
 
-Now the flag reads `false` with `reason: targeting_rule`, because the seed data turns `dark_mode`
+Now `dark_mode` reads **false** with `reason: targeting_rule`, because the seed data turns `dark_mode`
 **off** for that one user in development, while everyone else gets it on.
 
 Same flag, same page, two users, two answers. That's the reason feature flags exist.
+
+### Best demo (environments)
+
+The page has an **env** switcher at the top. Click **`production`**.
+
+`dark_mode` is **off** there, so the theme goes light — while `beta_banner` is **on** in production but
+off in development. No config change, no restart, no redeploy.
+
+The page also lists **every** flag with its state and the `reason` the API returned, so you can point at
+the reason column while showing the theme change.
 
 ### In the extension
 
 | Action | How |
 |---|---|
 | Refresh the tree | The ↻ button in the sidebar title bar |
+| Change environment / user in the demo | The `env` and `user` buttons at the top of the page |
 | Toggle a flag | Click the flag row |
 | Create a flag | The **+** button, or Ctrl+Shift+P → FlagPilot: Create Flag |
 | Show history | Right-click a flag → Show History |

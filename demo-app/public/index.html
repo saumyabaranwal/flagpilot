@@ -10,15 +10,18 @@
     --card: #f6f8fa;
     --border: #d8dee4;
     --accent: #0969da;
+    --muted: #656d76;
   }
 
-  /* this whole block is the "feature". the flag decides whether it applies */
+  /* this whole block is the "dark mode feature".
+     the flag decides whether this class gets applied. */
   body.dark {
     --bg: #0d1117;
     --fg: #e6edf3;
     --card: #161b22;
     --border: #30363d;
     --accent: #58a6ff;
+    --muted: #8b949e;
   }
 
   * { box-sizing: border-box; }
@@ -29,116 +32,229 @@
     background: var(--bg);
     color: var(--fg);
     font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
-    transition: background .25s, color .25s;
+    transition: background .25s, color .25s, border-color .25s;
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 24px;
   }
 
   .card {
     background: var(--card);
     border: 1px solid var(--border);
     border-radius: 12px;
-    padding: 32px 36px;
-    width: 460px;
+    padding: 28px 32px;
+    width: 560px;
   }
 
-  h1 { margin: 0 0 6px; font-size: 22px; }
-  p.sub { margin: 0 0 24px; opacity: .7; font-size: 14px; }
+  h1 { margin: 0 0 4px; font-size: 21px; }
+  p.sub { margin: 0 0 22px; font-size: 13px; color: var(--muted); }
 
-  .row {
+  .picker {
     display: flex;
-    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
     align-items: center;
-    padding: 11px 0;
-    border-top: 1px solid var(--border);
-    font-size: 14px;
   }
 
-  .row span:first-child { opacity: .7; }
+  .picker .label {
+    font-size: 12px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    margin-right: 2px;
+  }
 
-  code {
-    font-family: ui-monospace, Consolas, monospace;
-    font-size: 13px;
-    background: var(--bg);
-    padding: 2px 6px;
-    border-radius: 5px;
+  button.opt {
+    font: inherit;
+    font-size: 12.5px;
+    padding: 4px 11px;
+    border-radius: 999px;
     border: 1px solid var(--border);
+    background: transparent;
+    color: var(--fg);
+    cursor: pointer;
   }
+
+  button.opt:hover { border-color: var(--accent); }
+
+  button.opt.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    font-size: 13.5px;
+  }
+
+  th {
+    text-align: left;
+    font-weight: 500;
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--muted);
+    padding: 0 10px 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  td {
+    padding: 10px 10px 10px 0;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+
+  tr:last-child td { border-bottom: none; }
+
+  td.key code {
+    font-family: ui-monospace, Consolas, monospace;
+    font-size: 12.5px;
+  }
+
+  .desc { display: block; font-size: 11.5px; color: var(--muted); margin-top: 2px; }
 
   .pill {
-    font-size: 12px;
+    font-size: 11.5px;
     padding: 2px 9px;
     border-radius: 10px;
     font-weight: 500;
+    white-space: nowrap;
   }
+
   .on  { background: #2ea04333; color: #3fb950; }
   .off { background: #f8514933; color: #f85149; }
 
-  .who { margin-top: 18px; font-size: 13px; opacity: .8; }
-  .who code { cursor: pointer; }
-  .who code.active { border-color: var(--accent); color: var(--accent); }
+  code.reason {
+    font-family: ui-monospace, Consolas, monospace;
+    font-size: 11.5px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 1px 6px;
+  }
+
+  .foot {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    font-size: 12.5px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  .theme-state {
+    margin-top: 18px;
+    font-size: 13px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+  }
+
+  .err { color: #f85149; font-size: 13px; margin-top: 16px; }
 </style>
 </head>
 <body>
 
   <div class="card">
     <h1>My demo app</h1>
-    <p class="sub">This app checks a feature flag before showing the dark theme.</p>
+    <p class="sub">This app asks FlagPilot about each flag, then applies what it gets back.</p>
 
-    <div class="row">
-      <span>flag</span><span><code>dark_mode</code></span>
-    </div>
-    <div class="row">
-      <span>enabled?</span><span id="enabled">…</span>
-    </div>
-    <div class="row">
-      <span>decided by</span><span><code id="reason">…</code></span>
-    </div>
-    <div class="row">
-      <span>theme applied</span><span id="theme">…</span>
+    <div class="picker">
+      <span class="label">env</span>
+      <button class="opt" data-env="development">development</button>
+      <button class="opt" data-env="production">production</button>
     </div>
 
-    <p class="who">
-      asking as <code data-user="u_1001">u_1001</code> or <code data-user="u_1002">u_1002</code>
-      <br>(click one, then flip the flag in VS Code and reload)
+    <div class="picker">
+      <span class="label">user</span>
+      <button class="opt" data-user="u_1001">u_1001</button>
+      <button class="opt" data-user="u_1002">u_1002</button>
+    </div>
+
+    <table>
+      <thead>
+        <tr><th>flag</th><th>enabled</th><th>decided by</th></tr>
+      </thead>
+      <tbody id="rows">
+        <tr><td colspan="3">loading…</td></tr>
+      </tbody>
+    </table>
+
+    <div class="theme-state" id="theme-state"></div>
+
+    <p class="foot">
+      Flip a flag in the VS Code sidebar, then reload.
+      Same page, same code — different environments and users get different answers.
     </p>
+
+    <div class="err" id="err"></div>
   </div>
 
 <script>
-  // remember which user we're pretending to be, so the demo survives a reload
+  // remember choices so the demo survives a reload
+  const env = localStorage.getItem('demo-env') || 'development';
   const user = localStorage.getItem('demo-user') || 'u_1001';
 
-  function markActiveUser() {
-    document.querySelectorAll('.who code').forEach((el) => {
-      el.classList.toggle('active', el.dataset.user === user);
-      el.onclick = () => {
-        localStorage.setItem('demo-user', el.dataset.user);
-        location.reload();
-      };
-    });
+  // highlight the chosen buttons
+  document.querySelectorAll('.picker button').forEach((b) => {
+    const isActive = b.dataset.env === env || b.dataset.user === user;
+    b.classList.toggle('active', isActive);
+
+    b.onclick = () => {
+      if (b.dataset.env) localStorage.setItem('demo-env', b.dataset.env);
+      if (b.dataset.user) localStorage.setItem('demo-user', b.dataset.user);
+      location.reload();
+    };
+  });
+
+  function row(f) {
+    const pill = `<span class="pill ${f.enabled ? 'on' : 'off'}">${f.enabled}</span>`;
+    return `
+      <tr>
+        <td class="key"><code>${f.flag_key}</code>
+            <span class="desc">${f.description || ''}</span></td>
+        <td>${pill}</td>
+        <td><code class="reason">${f.reason || '-'}</code></td>
+      </tr>`;
   }
 
   async function run() {
-    markActiveUser();
+    try {
+      const res = await fetch(`/state?env=${env}&user=${user}`);
+      const data = await res.json();
 
-    const res = await fetch(`/flag?key=dark_mode&user=${user}`);
-    const flag = await res.json();
+      if (data.error) throw new Error(data.error);
 
-    document.getElementById('enabled').innerHTML =
-      `<span class="pill ${flag.enabled ? 'on' : 'off'}">${flag.enabled}</span>`;
-    document.getElementById('reason').textContent = flag.reason;
-    document.getElementById('theme').textContent = flag.enabled ? 'dark (new)' : 'light (old)';
+      document.getElementById('rows').innerHTML = data.flags.map(row).join('');
 
-    // the if-statement. written once, never changed by the toggle.
-    if (flag.enabled) {
-      document.body.classList.add('dark');
-    } else {
-      document.body.classList.remove('dark');
+      // ---- this is the part that matters ----
+      // the page asks about dark_mode, and one `if` decides the theme.
+      // written once. the toggle never changes this file.
+      const dark = data.flags.find((f) => f.flag_key === 'dark_mode');
+
+      if (dark && dark.enabled) {
+        document.body.classList.add('dark');
+        document.getElementById('theme-state').textContent =
+          'dark_mode is ON here, so this page applied the dark theme (the new behaviour).';
+      } else {
+        document.body.classList.remove('dark');
+        document.getElementById('theme-state').textContent =
+          'dark_mode is OFF here, so this page applied the light theme (the old behaviour).';
+      }
+    } catch (err) {
+      document.getElementById('err').textContent =
+        'Could not reach FlagPilot — ' + err.message + '. Is the API running on port 3000?';
+      document.getElementById('rows').innerHTML = '';
     }
   }
 
   run();
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a57d2eeacca2a5d3',t:'MTc5NDIzMTE0NA=='};var l=window.parent.location,o;try{o=new URL(l.origin).origin}catch(e){try{o=new URL(new URL(l.href).origin).origin}catch(e){o=''}}var u='/cdn-cgi/challenge-platform/scripts/jsd/main.js?ray=a57d2eeacca2a5d3',a=document.createElement('script');a.src=o?new URL(u,o).href:u;document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</body>
 </html>
